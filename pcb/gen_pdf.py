@@ -42,8 +42,9 @@ for s in ['RED  = top copper   (SPI bus, mic I2S, NRST, C1 decoupling AT LoRa VD
           'BLUE = bottom copper (3V3 rails + JP1 ferrite + threaded crossing, PPPS) + POUR',
           'GRN  = 0 jumper wires!  BUSY = top->via->bottom copper; DIO1 = all bottom copper',
           '0 copper crossings + 0 trace-over-pad shorts (machine-verified DRC).',
-          '3V3: LDO feeds mic/GPS with no crossing; JP1 ferrite, then ONE 0.4mm trace',
-          '     threads the ESP RX<->G1 gap (0.32mm clr, ~matches the LoRa 0.37 floor).',
+          '3V3: LDO feeds mic/GPS with no crossing; JP1 ferrite, then ONE 0.3mm trace',
+          '     threads the ESP RX<->G1 gap. UNIFORM 0.47mm isolation floor everywhere',
+          '     (set by LoRa 1.27 pitch) -> constant-Z millable, NO height map needed.',
           'EDGE CUTS: cut the outline + USB-C plug notch (bottom) + coil-ant notch (top)',
           'RF KEEPOUT (v2): clear ALL bottom GND pour inside the magenta box at the ANT',
           '     feed (ANT/ANT_PAD are the 50ohm RF output) -- do not backfill copper there.']: L(s)

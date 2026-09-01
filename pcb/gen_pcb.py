@@ -2,22 +2,22 @@
 """
 Acoustic node carrier — 2-layer CNC isolation-milled, UNPLATED holes.
 REAL footprints: ESP32-S3 SuperMini (classic 2x9, nologo pinout) + INMP441 2x3
-+ ATGM336H GPS + RYLR689 (1.27mm). Ferrite OMITTED (JP1 wire) + 10uF bulk cap.
++ ATGM336H GPS + RYLR689 (1.27mm). MCP1700 LDO + 0805 ferrite/caps + 470uF buffer.
 SuperMini pinout (confirmed from board image):
   LEFT col top->bot : TX RX G1 G2 G3 G4 G5 G6 G7
   RIGHT col top->bot: 5V GND 3V3 G13 G12 G11 G10 G9 G8
 Left-col LoRa signals cross UNDER the module on the bottom layer (free area).
-Outputs ./out: node_preview.png + Gerbers + node.drl. Rules: 0.8/1.4mm, >=0.6 clr.
+Outputs ./out: node_preview.png + Gerbers + node.drl. Uniform 0.47mm isolation floor.
 """
 import os
 OUT=os.path.join(os.path.dirname(__file__),'out'); os.makedirs(OUT,exist_ok=True)
-VERSION='v2.1'                             # v2.1 = widen 3V3 crossing isolation (0.22->0.32mm)
+VERSION='v2.2'                             # v2.2 = 3018-friendly: open all isolation to ~0.47mm
 P=2.54; p127=1.27; ECW=15.24
 BW,BH=56.0,53.0
 TRACE=0.8; POW=1.4; PADD=1.8; SPAD=1.3; HOLE=1.0; M3=3.2; REG=3.0
-CROSSW=0.4  # 3V3 column-crossing trace: thin so its isolation matches the LoRa floor
-ESPAD=1.5   # ESP castellated pads: smaller than PADD so the 2.54 column opens a
-            # 1.04mm gap -> a thin 3V3 trace can thread it (ring 0.25 around 1.0 hole)
+CROSSW=0.3  # 3V3 column-crossing trace: thin so its isolation matches the LoRa web
+ESPAD=1.3; ESPHOLE=0.8   # v2.2: ESP pads shrunk (ring 0.25 on 0.8 hole) so the 2.54
+            # column opens a 1.24mm gap -> crossing isolation 0.47mm, matching the LoRa web
 pads=[]; traces=[]; holes=[]; labels=[]
 def padd(x,y,net,lab,lp,d=PADD,hole=HOLE): pads.append((x,y,net,lab,lp,d,hole))
 def T(layer,w,*pts,lab=''): traces.append((layer,w,list(pts),lab))
@@ -31,8 +31,8 @@ espLn=['TX','RX','G1','G2','G3','G4','G5','G6','G7']
 espRn=['5V','GND','3V3','G13','G12','G11','G10','G9','G8']
 esp={}
 # USB-down: TX/5V (the USB-end pins, i=0) sit at the bottom row -> y=EY+i*P
-for i,n in enumerate(espLn): y=EY+i*P; padd(EX,y,n,n,'L',ESPAD); esp[n]=(EX,y)
-for i,n in enumerate(espRn): y=EY+i*P; padd(EX+ECW,y,n,n,'R',ESPAD); esp[n]=(EX+ECW,y)
+for i,n in enumerate(espLn): y=EY+i*P; padd(EX,y,n,n,'L',ESPAD,ESPHOLE); esp[n]=(EX,y)
+for i,n in enumerate(espRn): y=EY+i*P; padd(EX+ECW,y,n,n,'R',ESPAD,ESPHOLE); esp[n]=(EX+ECW,y)
 labels.append((EX+ECW/2,EY-3,'ESP32-S3 SuperMini (USB bottom)',1.05,0))
 
 # ---------- INMP441 mic 2x3 : LEFT, by the ESP I2S pins (G4/G5/G6) ----------
@@ -58,8 +58,8 @@ labels.append((gX+2*P,gY-3,'ATGM336H GPS',1.0,0))
 # edge faces the top of the board. Signal row (1-9) faces DOWN toward the ESP.
 Lcx=36; Lcy=39
 # RYLR689 is 1.27mm pitch with PLATED HOLES (solder wires/pins, as on the breadboard).
-# On a milled board use small holes so the 0.67mm web survives: hole 0.6, pad 0.9.
-LSPAD,LHOLE=0.9,0.6
+# v2.2: pad 0.8 / hole 0.5 -> web 0.47mm (was 0.37) with a healthy 0.15mm ring.
+LSPAD,LHOLE=0.8,0.5
 lora={}
 # BOTTOM row = pins 1..9 (signal, faces ESP), left->right:
 _Lbot=['LGND','LVDD','NRST','MISO','MOSI','SCK','NSS','RFV2','RFV1']
@@ -70,7 +70,7 @@ _Ltop=['LGN18','DIO3','DIO2','DIO1','BUSY','LGN13','APAD',None,'ANT']
 for i,n in enumerate(_Ltop):
     if n is None: continue
     x=Lcx+(i-4)*p127; y=Lcy+ECW/2; padd(x,y,n,n,'T',LSPAD,LHOLE); lora[n]=(x,y)
-labels.append((Lcx,Lcy-6*p127,'RYLR689 1.27mm (hole0.6/pad0.9)',1.0,0))
+labels.append((Lcx,Lcy-6*p127,'RYLR689 1.27mm (hole0.5/pad0.8)',1.0,0))
 
 # ---- C1 : local decoupling AT LoRa VDD (10uF 0805 MLCC, TOP-mount SMD land) --------
 # Pads land under LoRa VDD(pin2)/LGND(pin1); short TOP traces tie C1+->LVDD, C1-->LGND,
@@ -116,7 +116,7 @@ labels.append((47.0,20.5,'C2 470uF buffer',0.55,0))
 # bypass the bead (0-ohm). Open area between the LDO and the column.
 JPP=1.4
 jp=(19.5,9.81); jpb=(21.5,9.81)                        # 0805 pitch (2.0mm)
-padd(*jp,'3V3','J1','L',JPP,0.6); padd(*jpb,'3V3','J2','R',JPP,0.6)
+padd(*jp,'3V3','J1','L',JPP,0.5); padd(*jpb,'3V3','J2','R',JPP,0.5)   # 0.5 via = LoRa tool
 labels.append((20.5,11.4,'L1 ferrite 0805',0.48,0))
 
 # ---- part bodies (real sizes) for the body-collision DRC : keep >=0.6mm between them

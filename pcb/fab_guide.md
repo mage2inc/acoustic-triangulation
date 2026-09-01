@@ -29,15 +29,16 @@ a **starting design generated programmatically** — treat it like a first draft
 3. Run your CAM tool's isolation preview at your actual tool width.
 
 ## Milling parameters  (v2.1 — matches the current Gerbers/`node.drl`)
-- **Isolation tool:** **fine V-bit, ~0.1 mm tip, 20–30° — REQUIRED.** Tightest gaps are
-  **0.32 mm** (the one 3V3 column crossing) and **0.37 mm** (LoRa 1.27 mm web + pad/pad).
-  A flat end mill can't fit those. Low spindle runout + **bed auto-leveling / height map**
-  strongly advised — 0.32–0.37 mm is at the edge of hobby-CNC capability.
-- **Traces:** 0.8 mm signal · 1.4 mm power · **0.4 mm** at the single column crossing.
+- **Isolation tool:** **fine V-bit, ~0.1 mm tip, 20–30°.** The board is a **uniform
+  0.47 mm** isolation floor *everywhere* (set by the LoRa 1.27 mm pitch — no tighter
+  spots). That is millable at **constant Z** on a small flattened blank — **no height
+  map required.** Still: sharp V-bit, low spindle runout, and surface the spoilboard
+  flat + stick the blank down fully so it's true to the machine.
+- **Traces:** 0.8 mm signal · 1.4 mm power · **0.3 mm** at the single column crossing.
 - **Drills (from `node.drl`, 4 tools):**
-  - **0.6 mm** — LoRa module pads + JP1 ferrite via-in-pad
-  - **0.8 mm** — BUSY via
-  - **1.0 mm** — ESP / mic / GPS / LDO / battery / C2 leads
+  - **0.5 mm** — LoRa module pads + JP1 ferrite via-in-pad
+  - **0.8 mm** — ESP pads + BUSY via
+  - **1.0 mm** — mic / GPS / LDO / battery / C2 leads
   - **3.2 mm** — M3 corner holes (×4; these also do the flip-registration)
 - **Outline / notches / RF keepout:** **1.0–1.5 mm 2-flute flat end mill** — board edge,
   USB-C + ANT notches, and pocketing the RF-keepout rectangle. Leave tabs to hold it.
