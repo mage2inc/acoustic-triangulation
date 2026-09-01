@@ -21,6 +21,10 @@ def draw(ax,side):
     fcc='#dbe7f2' if side=='bot' else '#faf6f0'
     ax.add_patch(Polygon(OUTLINE,closed=True,fc=fcc,ec='k',lw=2,zorder=0))
     ax.add_patch(Polygon(OUTLINE,closed=True,fill=False,ec='k',lw=2,zorder=9))
+    if side=='bot':                                   # RF keepout: clear the GND pour here
+        kx0,ky0,kx1,ky1=ns['ant_keepout']
+        ax.add_patch(Rectangle((kx0,ky0),kx1-kx0,ky1-ky0,fc='white',ec='#c0007a',lw=1.4,ls=(0,(4,2)),zorder=3,hatch='xx'))
+        ax.text((kx0+kx1)/2,ky0-0.8,'RF keepout\n(no pour)',ha='center',va='top',fontsize=6,color='#c0007a',weight='bold',zorder=8)
     # traces for this side (jumpers ride on the TOP side)
     for layer,w,pts,lab in traces:
         show = (layer==side) or (side=='top' and layer=='jmp')

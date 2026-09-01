@@ -11,6 +11,7 @@ Outputs ./out: node_preview.png + Gerbers + node.drl. Rules: 0.8/1.4mm, >=0.6 cl
 """
 import os
 OUT=os.path.join(os.path.dirname(__file__),'out'); os.makedirs(OUT,exist_ok=True)
+VERSION='v2'                                  # v2 = RF antenna-feed ground keepout
 P=2.54; p127=1.27; ECW=15.24
 BW,BH=56.0,53.0
 TRACE=0.8; POW=1.4; PADD=1.8; SPAD=1.3; HOLE=1.0; M3=3.2; REG=3.0
@@ -214,6 +215,11 @@ for _j,_yy in enumerate([_g,_g-1.15,_g-2.5,_g-4.0]):       # grid rows (widen do
 
 ANT_NOTCH_FLOOR=BH-3.5                                        # coil-antenna clearance notch
 T('top',1.0,lora['ANT'],(lora['ANT'][0],ANT_NOTCH_FLOOR-0.5),lab='ANT')   # ANT -> notch base
+# RF KEEPOUT (v2): pull the GND pour BACK from the antenna feed. ANT(pin10) + ANT_PAD
+# (pin12) are the module's 50-ohm RF output; a tight ground pour beside them adds shunt
+# capacitance and detunes the antenna. Clear ALL bottom copper in this rectangle (keep
+# LGND pin13 at x37.27 grounded -> left edge starts right of it). No GND pad lies inside.
+ant_keepout=(37.9,44.3,42.9,ANT_NOTCH_FLOOR)                  # (x0,y0,x1,y1) bottom-layer
 
 # ---------- board OUTLINE (Edge_Cuts) with clearance notches ----------
 usbx=EX+ECW/2; usb_w=13.0; usb_d=5.5                 # USB-C plug notch, bottom edge
@@ -254,6 +260,9 @@ from matplotlib.patches import Circle,Rectangle,Polygon
 fig,ax=plt.subplots(figsize=(15,8.5),dpi=140); ax.set_aspect('equal')
 ax.add_patch(Polygon(OUTLINE,closed=True,fc='#dbe7f2',ec='k',lw=2.5,zorder=0))   # GND pour + outline
 ax.add_patch(Polygon(OUTLINE,closed=True,fill=False,ec='k',lw=2.5,zorder=10))
+kx0,ky0,kx1,ky1=ant_keepout                                                      # RF keepout: no pour
+ax.add_patch(Rectangle((kx0,ky0),kx1-kx0,ky1-ky0,fc='white',ec='#c0007a',lw=1.2,ls=(0,(4,2)),zorder=2,hatch='xx'))
+ax.text((kx0+kx1)/2,ky0-1.0,'RF keepout\n(no GND pour)',ha='center',va='top',fontsize=5.2,color='#c0007a',weight='bold',zorder=8)
 for gp in gnd_pads: ax.add_patch(Circle(gp,1.4,fill=False,ec='#1f6dad',lw=1.0,ls=(0,(1,1)),zorder=6))  # ties to pour
 def box(x0,y0,x1,y1): ax.add_patch(Rectangle((x0,y0),x1-x0,y1-y0,fill=False,ec='#999',lw=.8,ls=':'))
 box(EX-2.2,EY-2,EX+ECW+2.2,EY+8*P+2)
@@ -272,7 +281,7 @@ for hx,hy,d,k in holes:
     c='#1e8449' if k=='REG' else '#444'; ax.add_patch(Circle((hx,hy),d/2,fill=False,ec=c,lw=2,zorder=7))
     ax.text(hx,hy,k,ha='center',va='center',fontsize=5,color=c,zorder=8)
 for lx,ly,txt,sz,rot in labels: ax.text(lx,ly,txt,ha='center',va='center',fontsize=sz*4.3,weight='bold',color='#333',zorder=8)
-ax.text(BW/2,BH+3.5,f'ACOUSTIC NODE CARRIER · 2-layer milled · {BW:g}x{BH:g} mm',ha='center',fontsize=13,weight='bold')
+ax.text(BW/2,BH+3.5,f'ACOUSTIC NODE CARRIER · 2-layer milled · {BW:g}x{BH:g} mm · {VERSION}',ha='center',fontsize=13,weight='bold')
 ax.text(BW/2,BH+1.5,'RED=top copper   BLUE=bottom copper   GREEN dashed=jumper wire   light-blue field=GND pour   ·   0 copper crossings',ha='center',fontsize=8)
 ax.set_xlim(-6,BW+8); ax.set_ylim(-6,BH+6); ax.axis('off')
 plt.tight_layout(); plt.savefig(os.path.join(OUT,'node_preview.png'),bbox_inches='tight',facecolor='white')

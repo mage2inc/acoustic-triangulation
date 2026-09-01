@@ -60,12 +60,16 @@ rules at assembly:
 - There are **no blind vias** — every cross-layer point is at a solderable pad.
 
 ## Assembly order
+0. **RF keepout (v2):** when generating the bottom isolation/pour, exclude the magenta
+   keepout box at the antenna feed (`ANT`/`ANT_PAD` are the module's 50 Ω RF output) —
+   leave that rectangle bare copper-free so the ground pour doesn't detune the antenna.
 1. Mill both sides + drill + outline; deburr holes.
 2. Solder the **RYLR689** first (tightest). Coil/uFL antenna to the **ANT** pad
    (never power it without an antenna).
 3. Solder **ESP32-S3-Zero** (2 header rows), then **mic** and **GPS** headers.
 4. Solder both-sides where the preview shows a top trace on a pin.
-5. Confirm **L/R → GND** on the mic (left channel), **ANT** stub is clear of ground.
+5. Confirm **L/R → GND** on the mic (left channel); **ANT**/**ANT_PAD** and their feed
+   are clear of ground (the v2 keepout) — **ANT_PAD (pin 12) stays unconnected**.
 6. Flash `twonode_llcc` (node 1) / `twonode_b_llcc` (node 2), verify per FIELD_TEST.md.
 
 ## Net map (what connects to what)

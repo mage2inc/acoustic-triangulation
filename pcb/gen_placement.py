@@ -46,6 +46,10 @@ from matplotlib.patches import Rectangle,FancyBboxPatch,Circle,FancyArrow,Polygo
 fig,ax=plt.subplots(figsize=(15,8.6),dpi=150); ax.set_aspect('equal')
 ax.add_patch(Polygon(OUTLINE,closed=True,fc='#0d5c2f',ec='k',lw=2.2,zorder=0,alpha=.10))
 ax.add_patch(Polygon(OUTLINE,closed=True,fill=False,ec='k',lw=2.2,zorder=6))
+_k=ns['ant_keepout']                                       # RF antenna keepout (no GND pour)
+ax.add_patch(Rectangle((_k[0],_k[1]),_k[2]-_k[0],_k[3]-_k[1],fc='none',ec='#c0007a',lw=1.4,ls=(0,(4,2)),zorder=6))
+ax.annotate('RF keepout: clear GND pour\naround the antenna feed',((_k[0]+_k[2])/2,_k[3]),((_k[0]+_k[2])/2+9,_k[3]+3),
+            ha='left',va='center',fontsize=6.0,color='#c0007a',weight='bold',arrowprops=dict(arrowstyle='->',color='#c0007a',lw=1.1))
 
 def pins(coords,z=5):
     for (x,y) in coords:

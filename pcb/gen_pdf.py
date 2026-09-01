@@ -35,7 +35,7 @@ def L(s,size=8.3,b=False,c='#111',x=0.055,pre=0.0,lh=0.0158,url=None):  # runnin
     cur[0]-=lh
 def H(s,c='#1a5276'): L(s,10.5,True,c,pre=0.012,lh=0.019)         # section header
 
-L('ACOUSTIC NODE CARRIER — INSPECTION PACKET',14.5,True,lh=0.021)
+L(f'ACOUSTIC NODE CARRIER — INSPECTION PACKET   [{ns.get("VERSION","")}]',14.5,True,lh=0.021)
 L(f'2-layer CNC isolation-milled · {BW:g} x {BH:g} mm · unplated holes · GND pour (bottom)',8,c='#555')
 H('LAYER / ROUTING')
 for s in ['RED  = top copper   (SPI bus, mic I2S, NRST, C1 decoupling AT LoRa VDD)',
@@ -44,7 +44,9 @@ for s in ['RED  = top copper   (SPI bus, mic I2S, NRST, C1 decoupling AT LoRa VD
           '0 copper crossings + 0 trace-over-pad shorts (machine-verified DRC).',
           '3V3: LDO feeds mic/GPS with no crossing; JP1 ferrite, then ONE 0.6mm trace',
           '     threads the ESP RX<->G1 gap (pads 1.5mm) to feed ESP-3V3, LoRa VDD, C2.',
-          'EDGE CUTS: cut the outline + USB-C plug notch (bottom) + coil-ant notch (top)']: L(s)
+          'EDGE CUTS: cut the outline + USB-C plug notch (bottom) + coil-ant notch (top)',
+          'RF KEEPOUT (v2): clear ALL bottom GND pour inside the magenta box at the ANT',
+          '     feed (ANT/ANT_PAD are the 50ohm RF output) -- do not backfill copper there.']: L(s)
 H('BILL OF MATERIALS  (per node; blue rows are clickable -> Amazon)')
 AMZ='https://www.amazon.com/dp/'
 for r,p,asin in [

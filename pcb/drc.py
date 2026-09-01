@@ -89,5 +89,13 @@ for i in range(len(bodies)):
         if gap<BM: bc.append(f"{n1}<->{n2} {gap:.2f}")
 rep("part-body clearance",not bc,f">= {BM}mm: "+"; ".join(bc) if bc else "ok")
 
+# 7. RF keepout must not strand a ground pad (only ANT/ANT_PAD may sit inside)
+k=ns.get('ant_keepout')
+if k:
+    gset=set((round(p[0],2),round(p[1],2)) for p in ns['gnd_pads'])
+    stranded=[l or n for x,y,n,l,p,d,h in pads
+              if k[0]<=x<=k[2] and k[1]<=y<=k[3] and (round(x,2),round(y,2)) in gset]
+    rep("RF-keepout no stranded GND",not stranded,str(stranded) if stranded else "ok (only ANT/ANT_PAD inside)")
+
 print(f"\nDRC: {'ALL PASS' if not fails else 'FAIL -> '+', '.join(fails)}")
 sys.exit(1 if fails else 0)
