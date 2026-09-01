@@ -11,10 +11,11 @@ Outputs ./out: node_preview.png + Gerbers + node.drl. Rules: 0.8/1.4mm, >=0.6 cl
 """
 import os
 OUT=os.path.join(os.path.dirname(__file__),'out'); os.makedirs(OUT,exist_ok=True)
-VERSION='v2'                                  # v2 = RF antenna-feed ground keepout
+VERSION='v2.1'                             # v2.1 = widen 3V3 crossing isolation (0.22->0.32mm)
 P=2.54; p127=1.27; ECW=15.24
 BW,BH=56.0,53.0
 TRACE=0.8; POW=1.4; PADD=1.8; SPAD=1.3; HOLE=1.0; M3=3.2; REG=3.0
+CROSSW=0.4  # 3V3 column-crossing trace: thin so its isolation matches the LoRa floor
 ESPAD=1.5   # ESP castellated pads: smaller than PADD so the 2.54 column opens a
             # 1.04mm gap -> a thin 3V3 trace can thread it (ring 0.25 around 1.0 hole)
 pads=[]; traces=[]; holes=[]; labels=[]
@@ -182,13 +183,13 @@ T('top',TRACE,cap,lora['LVDD'],lab='3V3')        # C1+ -> LoRa VDD
 T('top',TRACE,capn,lora['LGND'],lab='GND')       # C1- -> LoRa LGND
 # 3V3 DISTRIBUTION. LDO (bottom-left) = source. The ESP LEFT pin column is a wall
 # (1.04mm gaps even with shrunk pads), so the net splits: LEFT (mic/gps) fed with NO
-# crossing; RIGHT (ESP 3V3, LoRa VDD, C2 buffer) fed by ONE 0.6mm trace threading the
+# crossing; RIGHT (ESP 3V3, LoRa VDD, C2 buffer) fed by ONE 0.4mm trace threading the
 # RX<->G1 gap at its centre (y=YX), then fanning out in the pin-free corridor.
 YX=9.81                                       # centre of the RX(8.54)/G1(11.08) gap
 T('bot',POW,ldo_out,(ldo_out[0],13),(5,13),(5,44),(gps['PVCC'][0],44),gps['PVCC'],lab='3V3')  # LEFT rail (up-over LDO)
 T('bot',POW,(5,24),(mic['MVDD'][0],24),mic['MVDD'],lab='3V3')            # mic VDD from below
 T('bot',POW,ldo_out,(ldo_out[0],YX),jp,lab='3V3')                       # LDO OUT -> JP1a (pre-ferrite)
-T('bot',0.6,jpb,(26,YX),(38,YX),(38,V3[1]),V3,lab='3V3')               # JP1b -> thread column -> ESP 3V3
+T('bot',CROSSW,jpb,(26,YX),(38,YX),(38,V3[1]),V3,lab='3V3')            # JP1b -> thread column -> ESP 3V3
 T('bot',TRACE,(lora['LVDD'][0],YX),lora['LVDD'],lab='3V3')              # corridor riser -> LoRa VDD (post-ferrite)
 T('top',POW,sc_p,(sc_p[0],V3[1]),V3,lab='3V3')                          # C2+ buffer -> ESP 3V3
 # LDO caps + battery : short TOP traces to the LDO's TH pads (they bridge to bottom).
@@ -291,13 +292,14 @@ def co(v): return '%d'%round(v*10000)
 def gerber(fn,layer):
     L=['%FSLAX34Y34*%','%MOMM*%','%LPD*%',f'%ADD10C,{TRACE:.4f}*%',f'%ADD11C,{POW:.4f}*%',
        f'%ADD12C,{1.0:.4f}*%',f'%ADD20C,{PADD:.4f}*%',f'%ADD21C,{SPAD:.4f}*%',
-       f'%ADD22C,{PWRPAD:.4f}*%',f'%ADD23C,{LSPAD:.4f}*%',f'%ADD24C,{LOGOW:.4f}*%']
+       f'%ADD22C,{PWRPAD:.4f}*%',f'%ADD23C,{LSPAD:.4f}*%',f'%ADD24C,{LOGOW:.4f}*%',
+       f'%ADD25C,{CROSSW:.4f}*%']
     for px,py,net,lab,lp,d,hole in pads:
         ap='D22*' if d==PWRPAD else ('D23*' if d==LSPAD else ('D21*' if d==SPAD else 'D20*'))
         L.append(ap); L.append('X%sY%sD03*'%(co(px),co(py)))
     for lay,w,pts,lab in traces:
         if lay!=layer and not(layer=='top' and lay=='logo'): continue   # logo -> top copper
-        L.append('D24*' if w==LOGOW else ('D11*' if w>=POW else ('D12*' if w==1.0 else 'D10*')))
+        L.append('D24*' if w==LOGOW else ('D25*' if w==CROSSW else ('D11*' if w>=POW else ('D12*' if w==1.0 else 'D10*'))))
         L.append('X%sY%sD02*'%(co(pts[0][0]),co(pts[0][1])))
         for x,y in pts[1:]: L.append('X%sY%sD01*'%(co(x),co(y)))
     L.append('M02*'); open(os.path.join(OUT,fn),'w').write('\n'.join(L))

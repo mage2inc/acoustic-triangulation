@@ -28,26 +28,28 @@ a **starting design generated programmatically** — treat it like a first draft
    crossing to the other layer or reroute.
 3. Run your CAM tool's isolation preview at your actual tool width.
 
-## Milling parameters
-- **Isolation tool:** 0.1–0.2 mm 30–60° V-bit, *or* a 0.8 mm flat end mill.
-- **Traces:** 0.8 mm signal, 1.4 mm power (3V3/GND). **Clearance ≥ 0.6 mm** — safe
-  for the above tools with one isolation pass (two passes if you want more copper
-  removed near the pads).
-- **Drills (from `node.drl`):**
-  - **1.0 mm** — all header/module pins
-  - **3.2 mm** — M3 mounting (×4 corners)
-  - **3.0 mm** — registration dowels (×2, top & bottom centerline)
-- **Outline:** 1.5–2 mm end mill, tabs to hold the board.
+## Milling parameters  (v2.1 — matches the current Gerbers/`node.drl`)
+- **Isolation tool:** **fine V-bit, ~0.1 mm tip, 20–30° — REQUIRED.** Tightest gaps are
+  **0.32 mm** (the one 3V3 column crossing) and **0.37 mm** (LoRa 1.27 mm web + pad/pad).
+  A flat end mill can't fit those. Low spindle runout + **bed auto-leveling / height map**
+  strongly advised — 0.32–0.37 mm is at the edge of hobby-CNC capability.
+- **Traces:** 0.8 mm signal · 1.4 mm power · **0.4 mm** at the single column crossing.
+- **Drills (from `node.drl`, 4 tools):**
+  - **0.6 mm** — LoRa module pads + JP1 ferrite via-in-pad
+  - **0.8 mm** — BUSY via
+  - **1.0 mm** — ESP / mic / GPS / LDO / battery / C2 leads
+  - **3.2 mm** — M3 corner holes (×4; these also do the flip-registration)
+- **Outline / notches / RF keepout:** **1.0–1.5 mm 2-flute flat end mill** — board edge,
+  USB-C + ANT notches, and pocketing the RF-keepout rectangle. Leave tabs to hold it.
 
-## Double-sided workflow (the flip) — registration dowels
-The two **3.0 mm REG holes** sit on the vertical centerline (top & bottom). Use them
-to keep top/bottom aligned:
-1. Drill the two REG holes **first** (and the pin/mount holes) through the stock.
-2. Press two **3.0 mm dowel pins** into your spoilboard at the matching spots.
-3. Mill **bottom** copper (`B_Cu`). Lift, **flip about the vertical axis**, drop
-   back onto the same two dowels → orientation preserved. Mill **top** (`F_Cu`).
+## Double-sided workflow (the flip) — M3 corner holes = registration
+The **four M3 corner holes** double as registration (no separate dowels):
+1. Drill all holes (incl. the four 3.2 mm corners) through the stock first.
+2. Put two **M3 screws/dowel pins** through diagonal corners into your spoilboard.
+3. Mill **bottom** copper (`B_Cu`). Lift, **flip about the vertical axis**, drop back
+   onto the same two corner pins → orientation preserved. Mill **top** (`F_Cu`).
    - In CAM, mirror the top layer about the **Y axis** (vertical) so it matches the flip.
-4. Then cut the outline.
+4. Cut the outline + notches last.
 
 ## Unplated holes — handling the few cross-layer nets
 Holes are **not plated**, so a pin only connects to copper on the side you solder.
