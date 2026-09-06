@@ -58,6 +58,8 @@ Raspberry Pi (any model with USB) + the office node + a browser. No cloud. No AP
 
 **Full BOM with sourcing notes and buy links → [BOM.md](BOM.md)**
 
+**Detailed power budget, solar sizing, and low-power DS3231 holdover variant → [POWER.md](POWER.md)**
+
 ---
 
 ## Repo layout
@@ -76,6 +78,7 @@ base/
   requirements.txt
 
 BOM.md             Full bill of materials with sourcing
+POWER.md           Power budget, solar sizing, battery autonomy, DS3231 holdover
 WIRING.md          Pin-by-pin wiring for S3-Zero + all modules
 POC.md             Proof-of-concept plan (USB-powered bench test first)
 NODE_FIRMWARE_DESIGN.md  Detailed firmware architecture
