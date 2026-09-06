@@ -11,6 +11,7 @@
 // (522 ms apart) and bursts at ~700 rpm (85.7 ms apart). A detector that reports
 // fewer rounds than were fired is not "filtering echoes", it is losing data.
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <cmath>
@@ -33,7 +34,7 @@ static uint32_t millis() { return g_now_ms; }
 static void reset_detector() {
   g_noise = 8000.0f; g_cursor = 0; g_refr_ms = 3000;
 #ifdef NEWVER
-  g_env = 0.0f; g_armed = true; g_disarm_ms = 0;
+  g_env = 0.0f; g_armed = true; g_disarm_ms = 0; g_rearm_at = 0.0f;
 #endif
   g_head = 0; g_now_ms = 0;
   for (int i = 0; i < RING_SIZE; i++) g_ring[i] = 0;
@@ -105,6 +106,23 @@ int main() {
     for (int k = 0; k < 19; k++) add_round(v, 4.0 + k * 0.522, 0.05);
     while (v.size() < (size_t)(16.0 * SAMPLE_RATE)) v.push_back((int32_t)(std::normal_distribution<double>(0,2000)(rng)));
     report("C  measured string, 19 rounds @ 522 ms", run(v), 19);
+  }
+  { // E: noisy site. The re-arm level must not drift with the adapting noise floor.
+    // Tail sits just above the latched re-arm level; g_noise climbs toward it, which drags an
+    // UNLATCHED re-arm level up past the envelope and re-arms mid-tail. A loud echo then gets
+    // through as a second "round".
+    std::vector<int32_t> v; add_quiet(v, 3.5, 25000.0);
+    size_t at = (size_t)(4.0 * SAMPLE_RATE);
+    while (v.size() < at) v.push_back((int32_t)(std::normal_distribution<double>(0,25000)(rng)));
+    for (int i = 0; i < 8; i++) v.push_back((int32_t)(2.0e6 * std::sin(3.14159 * i / 7.0)));
+    std::normal_distribution<double> pl(0.0, 60000.0);
+    for (int i = 0; i < (int)(0.120 * SAMPLE_RATE); i++) {      // flat tail ~60k for 120 ms
+      double e = pl(rng); v.push_back((int32_t)(e < 0 ? -e : e));
+    }
+    size_t echo = at + 8 + (size_t)(0.040 * SAMPLE_RATE);        // loud echo at 40 ms
+    for (int i = 0; i < 8; i++) v[echo + i] += (int32_t)(3.0e5 * std::sin(3.14159 * i / 7.0));
+    add_quiet(v, 1.5, 25000.0);
+    report("E  noisy site, shot + echo at 40 ms", run(v), 1);
   }
   { // D: quiet only -- false alarms
     std::vector<int32_t> v; add_quiet(v, 30.0);

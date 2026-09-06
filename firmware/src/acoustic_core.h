@@ -156,6 +156,7 @@ static uint32_t g_refr_ms   = 3000;             // startup settle ONLY: ignore t
 static float    g_env       = 0.0f;             // peak-decay envelope of |sample|
 static bool     g_armed     = true;             // Schmitt gate state
 static uint32_t g_disarm_ms = 0;                // when we last fired (failsafe re-arm)
+static float    g_rearm_at  = 0.0f;             // re-arm level, LATCHED at disarm
 
 // Re-arm on the SIGNAL falling, not on a timer.
 //
@@ -175,6 +176,11 @@ static uint32_t g_disarm_ms = 0;                // when we last fired (failsafe 
 #define ENV_DECAY      (1.0f - 1.0f / (ENV_RELEASE_S * SAMPLE_RATE))
 #define REARM_FRAC     0.35f                    // of the trigger level
 #define REARM_MAX_MS   2000                     // failsafe: never stay deaf longer
+//
+// The re-arm level is latched when we disarm, not recomputed per sample. g_noise keeps adapting
+// during a tail -- tail samples under the 7x dead-band pull it UP -- which would drag the re-arm
+// level up with it and re-arm early, mid-tail, in exactly the noisy conditions the gate is for.
+// A hysteresis threshold that moves is not hysteresis.
 
 // Scan newly-arrived ring samples. On a trigger, find the local peak then walk
 // BACK to the last sample below 20% of peak = the true onset edge (amplitude-
@@ -202,7 +208,7 @@ static bool core_detect_onset(uint32_t* onset_sample, int32_t* out_peak) {
     if (!g_armed) {
       // Re-arm once the tail has genuinely decayed. The time-based escape hatch is
       // there so sustained noise cannot leave a deployed node permanently deaf.
-      if (g_env < trig * REARM_FRAC ||
+      if (g_env < g_rearm_at ||
           (int32_t)(millis() - g_disarm_ms) > REARM_MAX_MS) g_armed = true;
       g_cursor++;
       continue;
@@ -225,6 +231,7 @@ static bool core_detect_onset(uint32_t* onset_sample, int32_t* out_peak) {
       }
       *onset_sample = on; *out_peak = peak;
       g_env       = (float)peak;      // release starts at the peak we just measured
+      g_rearm_at  = trig * REARM_FRAC; // latched: this event's re-arm level, fixed for its life
       g_armed     = false;            // re-arms when the envelope falls, not on a clock
       g_disarm_ms = millis();
       g_cursor    = wend;
