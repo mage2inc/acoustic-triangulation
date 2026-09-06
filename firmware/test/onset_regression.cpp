@@ -107,10 +107,10 @@ int main() {
     while (v.size() < (size_t)(16.0 * SAMPLE_RATE)) v.push_back((int32_t)(std::normal_distribution<double>(0,2000)(rng)));
     report("C  measured string, 19 rounds @ 522 ms", run(v), 19);
   }
-  { // E: noisy site. The re-arm level must not drift with the adapting noise floor.
-    // Tail sits just above the latched re-arm level; g_noise climbs toward it, which drags an
-    // UNLATCHED re-arm level up past the envelope and re-arms mid-tail. A loud echo then gets
-    // through as a second "round".
+  { // E: noisy site -- a loud tail and a loud echo, where nothing else covers.
+    // This does NOT demonstrate the latched re-arm level: it passes with the level latched and
+    // with it drifting. Kept because high-noise behaviour was otherwise untested, and labelled
+    // so nobody later reads a passing E as evidence the latch does something.
     std::vector<int32_t> v; add_quiet(v, 3.5, 25000.0);
     size_t at = (size_t)(4.0 * SAMPLE_RATE);
     while (v.size() < at) v.push_back((int32_t)(std::normal_distribution<double>(0,25000)(rng)));
