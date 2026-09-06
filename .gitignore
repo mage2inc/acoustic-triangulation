@@ -1,3 +1,17 @@
 .DS_Store
 __pycache__/
 *.pyc
+*.pyo
+
+# PlatformIO build artifacts
+.pio/
+firmware/.pio/
+
+# PCB preview PNGs tracked separately (only generated ones kept)
+pcb/out_sx1276/*.png
+pcb/out/*.png
+
+# KiCad output / cache
+*.kicad_prl
+*-backups/
+fp-info-cache

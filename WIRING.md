@@ -80,3 +80,59 @@ mic(3) + GPS(2) + RYLR689(9) = 14 signals vs 13 header pins. Reconcile:
   pins for 14 signals. Build with `-D PIN_LORA_RFSW2=44`; GP43 (TX) stays spare.
   No solder pad, no extra part, real BUSY — the same two-GPIO RF-switch topology
   the **PCB** uses, so the breadboard is electrically identical to the final board.
+
+---
+
+## Signals — XL1276-P01 (SX1276) node  [manufactured PCB v3 / node_config.h default]
+
+**3 fewer control pins** vs RYLR689: no BUSY, no RFSW_V1/V2. The SX1276 integrates
+the antenna switch. GP7 and GP8 are now free (DS3231 RTC, status LED, etc.).
+
+```
+INMP441 I²S:     BCLK=GP4   WS=GP5   SD=GP6            (L/R → GND, left ch)
+XL1276-P01 SPI:  SCK=GP11   MISO=GP13  MOSI=GP12  NSS=GP10
+                 RST=GP44   DIO0=GP9
+ATGM336H:        GPS_TX→GP1 (ESP RX)   PPS=GP2
+```
+
+XL1276-P01 module pins → ESP (Ra-01S-compatible pinout, antenna at module top):
+
+| Module pin | Signal | ESP GPIO |
+|---|---|---|
+| Right col R2 | VCC (3.3 V) | 3V3 rail |
+| Right col R3 | NSS / CS | GP10 |
+| Right col R4 | SCK | GP11 |
+| Right col R5 | MOSI | GP12 |
+| Right col R6 | MISO | GP13 |
+| Right col R7 | RST | GP44 (RX pin) |
+| Right col R8 | GND | GND rail |
+| Left col L1 | ANT | wire antenna (bundled) |
+| Left col L8 | DIO0 | GP9 |
+| Left col L2 | GND | GND rail |
+| L3–L7 | DIO5–DIO1 | NC |
+| Right col R1 | NC | — |
+
+> **Verify the physical pinout on your specific XL1276-P01 batch** before
+> soldering the first node. Ra-01S-compatible modules are common, but some
+> sellers rotate or mirror the pin numbering. Use a multimeter to confirm
+> VCC and GND before applying power.
+
+### Breadboard bring-up (XL1276-P01)
+
+**Phase 1 — radio link test** (`lora_tx` / `lora_rx`): wire only NSS, SCK,
+MOSI, MISO, RST, DIO0, VCC, GND. No mic, no GPS. Expect RSSI ≈ −30…−60 dBm
+at close range.
+
+**Phase 2 — full node** (`stage4`): add mic + GPS. Pin budget:
+
+| Group | Signals | GPIOs used |
+|---|---|---|
+| I²S mic | BCLK, WS, SD | GP4, GP5, GP6 |
+| SPI radio | NSS, SCK, MOSI, MISO | GP10, GP11, GP12, GP13 |
+| Radio control | RST, DIO0 | GP44, GP9 |
+| GPS | GPS_TX, PPS | GP1, GP2 |
+| **Total** | **10 signals** | **GP43 + GP3 + GP7 + GP8 spare** |
+
+With the XL1276-P01 you have **4 spare GPIOs** on the S3-Zero vs 0 with the
+RYLR689. The defaults in `node_config.h` already target this pinout — no build
+flags needed.
