@@ -22,8 +22,8 @@ ranking as "best geometry among sites that all detect", and decide detectability
 Coordinates match base_station.py: lat/lon in, local equirectangular metres inside.
 Depends on numpy only.
 
-    python3 placement.py --nodes "40.1,-75.2;40.1,-75.198;40.102,-75.198;40.102,-75.2"
-    python3 placement.py --nodes ... --candidates "40.101,-75.199"
+    python3 base/placement.py --nodes "40.1,-75.2;40.1,-75.198;40.102,-75.198;40.102,-75.2"
+    python3 base/placement.py --nodes ... --candidates "40.101,-75.199"
 """
 import argparse
 import math
@@ -97,7 +97,7 @@ def best_addition(nodes_m, candidates_m, bounds, step=20.0):
     return out
 
 
-_RAMP = " .:-=+*#%@"
+_RAMP = " .:-=+*#%"          # '@' is reserved for non-finite
 
 
 def render(g, nodes_m, width=60):

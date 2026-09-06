@@ -51,6 +51,17 @@ def test_grid_and_ranking_run():
     assert all(r["dof"] == 2 for r in ranked)
 
 
+def test_map_reserves_at_sign_for_degenerate_cells_only():
+    """The legend says '@' means degenerate. It has to be true: a saturated but finite DOP must
+    not render as '@', or the map quietly lies about which cells are unsolvable."""
+    assert "@" not in PL._RAMP
+    line = [(0.0, 0.0), (100.0, 0.0), (200.0, 0.0)]          # collinear -> genuinely singular
+    g = PL.dop_grid(line, (-50.0, -50.0, 250.0, 50.0), step=50.0)
+    assert "@" in PL.render(g, line), "singular cells must still be marked"
+    sq = PL.dop_grid(SQUARE, (0.0, 0.0, 200.0, 200.0), step=50.0)
+    assert "@" not in PL.render(sq, SQUARE), "a well-conditioned square has no degenerate cells"
+
+
 def test_cli(capsys):
     assert PL.main(["--nodes", "40.1,-75.2;40.1,-75.198;40.102,-75.198;40.102,-75.2",
                     "--step", "40"]) == 0
