@@ -4,14 +4,15 @@ gen_pcb_sx1276.py — Acoustic node carrier v3.0, XL1276-P01 / SX1276 variant.
 2-layer FR4, 56×53 mm, designed for JLCPCB manufacturing (or any fab).
 
 Key changes vs v2.2 (RYLR689):
-  • XL1276-P01 (SX1276) footprint — 16×16 mm, 2 mm pitch, Ra-01S-compatible pinout
+  • XL1276-P01 (SX1276) footprint — 16×16 mm, 2 mm pitch, ACTUAL verified pinout
   • 3 control signals vs 6: only NSS/SCK/MOSI/MISO/RST/DIO0 — no RFSW, no BUSY
   • GP7 + GP8 freed for future use (DS3231 RTC, status LED, etc.)
   • Gerbers include F_Mask / B_Mask / F_Silk for JLCPCB ordering
 
-XL1276-P01 pinout assumed (Ra-01S / SX1276 standard, antenna at module top):
-  Left col  (L1→L8, top first): ANT  GND  DIO5  DIO4  DIO3  DIO2  DIO1  DIO0
-  Right col (R1→R8, top first): NC   VCC  NSS   SCK   MOSI  MISO  RST   GND
+XL1276-P01 ACTUAL pinout (verified from Art of Circuits XL1276-D01 datasheet):
+  Left col  (pins 1-8,  top first): ANT  GND  GND  DIO1 DIO2 DIO3 DIO4 DIO5
+  Right col (pins 9-16, top first): GND  VCC  DIO0 RST  SCK  MISO MOSI NSS
+  DIO0 is on the RIGHT column (pin 11), NOT the left. SPI order from top: SCK→MISO→MOSI→NSS.
 
 Outputs → ./out_sx1276/:
   node_sx1276-F_Cu.gtl   node_sx1276-B_Cu.gbl
@@ -127,16 +128,16 @@ silk.append(('text', gX+2*P, gY+3.0, 'ATGM336H GPS', 1.0))
 
 # ==========================================================================
 # XL1276-P01 (SX1276) — 16×16 mm, castellation, 2 mm pitch, 8 per side.
-# Antenna at TOP (high y). Pinout: Ra-01S compatible.
-# Left  col x=Lcx-LHW: ANT GND DIO5 DIO4 DIO3 DIO2 DIO1 DIO0  (top→bot)
-# Right col x=Lcx+LHW: NC  VCC NSS  SCK  MOSI MISO RST  GND   (top→bot)
+# Antenna at TOP (high y). ACTUAL pinout from XL1276-D01 datasheet.
+# Left  col x=Lcx-LHW: ANT GND GND  DIO1 DIO2 DIO3 DIO4 DIO5  (top→bot, pins 1-8)
+# Right col x=Lcx+LHW: GND VCC DIO0 RST  SCK  MISO MOSI NSS   (top→bot, pins 9-16)
 # Y positions: Lcy+7, Lcy+5, Lcy+3, Lcy+1, Lcy-1, Lcy-3, Lcy-5, Lcy-7
 # ==========================================================================
 lora = {}
 LPY  = [Lcy + 7 - 2*i for i in range(8)]   # top-to-bot y positions
 
-_L = ['LANT','LGND','LDIO5','LDIO4','LDIO3','LDIO2','LDIO1','LDIO0']
-_R = ['LNC', 'LVCC','LNSS', 'LSCK', 'LMOSI','LMISO','LRST', 'LGND2']
+_L = ['LANT','LGND1','LGND2','LDIO1','LDIO2','LDIO3','LDIO4','LDIO5']
+_R = ['LGND3','LVCC','LDIO0','LRST','LSCK','LMISO','LMOSI','LNSS']
 
 for i, n in enumerate(_L):
     x = Lcx - LHW
@@ -188,9 +189,9 @@ smd(*jpb, '3V3', 'J2', SMD14)
 silk.append(('text', 20.5, 11.2, 'L1 ferrite', 0.6))
 
 # C1 — 10 uF 0805 local decoupling at LoRa VCC
-# Placed just right of the LoRa right col, level with LVCC pad
-c1p = (Lcx+LHW+2.2, lora['LVCC'][1])
-c1n = (Lcx+LHW+4.0, lora['LVCC'][1])
+# Shifted right to x=47/48.8 to clear the DIO0 via at (46, 40)
+c1p = (Lcx+LHW+3.0, lora['LVCC'][1])   # 47.0, 42
+c1n = (Lcx+LHW+4.8, lora['LVCC'][1])   # 48.8, 42
 smd(*c1p, '3V3', 'C1+')
 smd(*c1n, 'GND', 'C1-')
 silk.append(('text', Lcx+LHW+3.0, lora['LVCC'][1]+2.0, 'C1 10uF', 0.6))
@@ -215,14 +216,15 @@ V3 = esp['3V3'];  GN = esp['GND']
 # ---- SPI bus — TOP layer, staggered columns between ESP right col & LoRa ----
 # ESP right col x=40.24; LoRa right col x=44.  Route via mx values 40.8..42.6
 # so the 4 vertical segments don't overlap (0.6 mm spacing ≥ 0.2 mm clearance).
-#   G13 → LMISO   G12 → LMOSI   G11 → LSCK   G10 → LNSS
+# Correct pinout: LNSS=y30, LMOSI=y32, LMISO=y34, LSCK=y36 (right col, bot→top)
 for gpin, lpin, mx in [('G13','LMISO',40.8),('G12','LMOSI',41.4),
                         ('G11','LSCK', 42.0),('G10','LNSS', 42.6)]:
     seg('top', esp[gpin], lora[lpin], mx=mx, lab=lpin)
 
 # ---- RST — TOP layer, routes right past ESP then up alongside board edge ----
-# RX/GP44 at (25, 8.54).  LRST at (44, 30) [right col, 7th from top = Lcy-7=30].
+# RX/GP44 at (25, 8.54).  LRST at (44, 38) [right col, 4th from top = Lcy+1].
 # Drops to y=7 to avoid the GND pad at (40.24, 8.54), then swings wide right.
+# Final horizontal (48→44) at y=38 is 2 mm above DIO0 stub at y=40 — no crossing.
 T('top', TRACE,
   esp['RX'],
   (EX, 7.0),
@@ -231,17 +233,14 @@ T('top', TRACE,
   lora['LRST'],
   lab='RST')
 
-# ---- DIO0 — BOTTOM layer from G9 TH pad (both-layer via the plated hole) ----
-# G9 at (40.24, 23.78).  LDIO0 at (28, 30).
-# Route: right past LoRa, down to clear-zone, left under module, up to DIO0.
-T('bot', TRACE,
-  esp['G9'],
-  (45.0, esp['G9'][1]),
-  (45.0, 28.5),
-  (26.0, 28.5),
-  (26.0, lora['LDIO0'][1]),
-  lora['LDIO0'],
-  lab='DIO0')
+# ---- DIO0 — right col pad 11, at (44, 40) — NOT left col ----
+# SMD pad is F_Cu only. Route: B_Cu from G9 TH pad → via at (46,40), then
+# short F_Cu stub (46→44) at y=40. Via at x=46 clears all SMD right-col pads
+# (nearest is LRST at y=38, 2 mm below) and C1+ at (47,42), 2.2 mm away.
+VIA_DIO0 = (46.0, lora['LDIO0'][1])   # (46.0, 40.0)
+pad(*VIA_DIO0, 'DIO0', 'VIA_DIO0', 1.2, 1.2, 0.6)   # 1.2 mm pad / 0.6 mm drill
+T('bot', TRACE, esp['G9'], (VIA_DIO0[0], esp['G9'][1]), VIA_DIO0, lab='DIO0')
+T('top', TRACE, VIA_DIO0, lora['LDIO0'], lab='DIO0')
 
 # ---- Mic I2S — TOP layer (G4→MSCK, G5→MWS, G6→MSD) ----
 seg('top', esp['G4'], mic['MSCK'], mx=14.0,  lab='MSCK')
@@ -298,7 +297,7 @@ T('bot', POW, batp, (ldo_in[0], batp[1]), ldo_in, lab='BAT-in')
 
 # GND reference list (these tie to the B_Cu GND pour — add in KiCad)
 gnd_pads = [GN, mic['MGND'], mic['MLR'], gps['PGND'],
-            lora['LGND'], lora['LGND2'], c1n, batn, ldo_g, cinG, coutG, sc_m]
+            lora['LGND1'], lora['LGND2'], lora['LGND3'], c1n, batn, ldo_g, cinG, coutG, sc_m]
 
 # ==========================================================================
 # BOARD OUTLINE (same rounded-corner algorithm as v2.2)

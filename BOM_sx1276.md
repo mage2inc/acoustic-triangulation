@@ -30,11 +30,11 @@ Prices = AliExpress/Amazon best-deal tier, USD, Sep 2026. Buy 1–2 spares on ch
 | — | PCB (v3.0-sx1276, JLCPCB 2-layer FR4) | — | ~1.80 | 1 | 1.80 |
 | | **Per-node board subtotal** | | | | **~$25.60** |
 
-> **XL1276-P01 pinout note:** The footprint in `gen_pcb_sx1276.py` assumes the
-> Ra-01S-compatible pinout (left col top→bot: ANT GND DIO5 DIO4 DIO3 DIO2 DIO1 DIO0;
-> right col: NC VCC NSS SCK MOSI MISO RST GND). **Measure your specific batch** with a
-> multimeter before soldering. Swap `LORA_PW` / `LORA_PH` in the script if the pitch
-> is different from 2 mm.
+> **XL1276-P01 pinout:** Footprint uses the ACTUAL verified pinout from the XL1276-D01
+> datasheet — NOT Ra-01S-compatible. Left col: ANT GND GND DIO1 DIO2 DIO3 DIO4 DIO5.
+> Right col: GND VCC DIO0 RST SCK MISO MOSI NSS (top→bot). DIO0 is on the right column.
+> **Verify VCC and GND with a multimeter before first power-on.**
+> If pitch differs from 2 mm, adjust `LORA_PW`/`LORA_PH` and regenerate.
 
 ---
 

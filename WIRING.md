@@ -95,27 +95,25 @@ XL1276-P01 SPI:  SCK=GP11   MISO=GP13  MOSI=GP12  NSS=GP10
 ATGM336H:        GPS_TX→GP1 (ESP RX)   PPS=GP2
 ```
 
-XL1276-P01 module pins → ESP (Ra-01S-compatible pinout, antenna at module top):
+XL1276-P01 module pins → ESP (actual XL1276-P01 pinout, verified from datasheet):
 
 | Module pin | Signal | ESP GPIO |
 |---|---|---|
-| Right col R2 | VCC (3.3 V) | 3V3 rail |
-| Right col R3 | NSS / CS | GP10 |
-| Right col R4 | SCK | GP11 |
-| Right col R5 | MOSI | GP12 |
-| Right col R6 | MISO | GP13 |
-| Right col R7 | RST | GP44 (RX pin) |
-| Right col R8 | GND | GND rail |
-| Left col L1 | ANT | wire antenna (bundled) |
-| Left col L8 | DIO0 | GP9 |
-| Left col L2 | GND | GND rail |
-| L3–L7 | DIO5–DIO1 | NC |
-| Right col R1 | NC | — |
+| Right col, pin 10 (2nd from top) | VCC (3.3 V) | 3V3 rail |
+| Right col, pin 11 (3rd from top) | DIO0 / IRQ | GP9 |
+| Right col, pin 12 (4th from top) | RST | GP44 (RX pin) |
+| Right col, pin 13 (5th from top) | SCK | GP11 |
+| Right col, pin 14 (6th from top) | MISO | GP13 |
+| Right col, pin 15 (7th from top) | MOSI | GP12 |
+| Right col, pin 16 (8th/bot) | NSS / CS | GP10 |
+| Right col, pin 9 (top) | GND | GND rail |
+| Left col, pin 1 (top) | ANT | wire antenna |
+| Left col, pins 2-3 | GND | GND rail |
+| Left col, pins 4-8 | DIO1-DIO5 | NC |
 
-> **Verify the physical pinout on your specific XL1276-P01 batch** before
-> soldering the first node. Ra-01S-compatible modules are common, but some
-> sellers rotate or mirror the pin numbering. Use a multimeter to confirm
-> VCC and GND before applying power.
+> **Critical:** DIO0 is on the RIGHT column (pin 11), not the left. This module
+> is NOT Ra-01S-compatible — the pinout is different. Verify VCC and GND with
+> a multimeter before applying power. **Never assume Ra-01S pinout.**
 
 ### Breadboard bring-up (XL1276-P01)
 
