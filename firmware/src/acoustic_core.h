@@ -149,10 +149,32 @@ static uint64_t core_local_to_gps_us(uint64_t local_us) {
 }
 
 // ============================ onset detection ===============================
-static float    g_noise    = 8000.0f;
-static uint32_t g_cursor   = 0;                 // samples processed
-static uint32_t g_refr_ms  = 3000;              // also = startup settle: ignore the
+static float    g_noise     = 8000.0f;
+static uint32_t g_cursor    = 0;                // samples processed
+static uint32_t g_refr_ms   = 3000;             // startup settle ONLY: ignore the
                                                 //   INMP441 DC-offset transient (~2-3s)
+static float    g_env       = 0.0f;             // peak-decay envelope of |sample|
+static bool     g_armed     = true;             // Schmitt gate state
+static uint32_t g_disarm_ms = 0;                // when we last fired (failsafe re-arm)
+
+// Re-arm on the SIGNAL falling, not on a timer.
+//
+// A fixed refractory cannot tell a decay tail from a new round. Too short and one
+// shot re-fires for as long as its own tail stays loud; too long and it swallows
+// real rounds. Both ends are measured, on live fire, in dama-hear's
+// docs/validation-full-captures.md: a 25 ms guard turned single shots into clusters
+// of 4-5 (32 such clusters in 123.7 min), while real strings run as fast as 19
+// rounds in 9.4 s -- 522 ms apart, which a 700 ms refractory eats whole.
+//
+// So: after firing, stay disarmed until the envelope falls back under a fraction of
+// the trigger level. That kills tails without putting a floor under round spacing.
+//
+// The envelope is not optional. Walking raw |sample| re-arms on the first zero
+// crossing -- every cycle -- which is no gate at all.
+#define ENV_RELEASE_S  0.003f                   // ~3 ms release
+#define ENV_DECAY      (1.0f - 1.0f / (ENV_RELEASE_S * SAMPLE_RATE))
+#define REARM_FRAC     0.35f                    // of the trigger level
+#define REARM_MAX_MS   2000                     // failsafe: never stay deaf longer
 
 // Scan newly-arrived ring samples. On a trigger, find the local peak then walk
 // BACK to the last sample below 20% of peak = the true onset edge (amplitude-
@@ -166,10 +188,27 @@ static bool core_detect_onset(uint32_t* onset_sample, int32_t* out_peak) {
   while (g_cursor < head) {
     int32_t s = g_ring[g_cursor & RING_MASK] >> 8;
     int32_t a = s < 0 ? -s : s;
+
+    // fast attack, exponential release
+    g_env = ((float)a > g_env) ? (float)a : (g_env * ENV_DECAY);
+
     if ((float)a < g_noise * 7.0f)                          // adapt on any non-trigger sample
       g_noise = 0.9995f * g_noise + 0.0005f * (float)a;     // (avoids the 4x-8x dead-band)
 
-    if ((int32_t)(millis() - g_refr_ms) > 0 && (float)a > g_noise * 8.0f && a > (int32_t)ONSET_ABS_MIN) {
+    // the level a sample must actually clear: adaptive gate OR absolute floor
+    const float trig = (g_noise * 8.0f > (float)ONSET_ABS_MIN)
+                     ? g_noise * 8.0f : (float)ONSET_ABS_MIN;
+
+    if (!g_armed) {
+      // Re-arm once the tail has genuinely decayed. The time-based escape hatch is
+      // there so sustained noise cannot leave a deployed node permanently deaf.
+      if (g_env < trig * REARM_FRAC ||
+          (int32_t)(millis() - g_disarm_ms) > REARM_MAX_MS) g_armed = true;
+      g_cursor++;
+      continue;
+    }
+
+    if ((int32_t)(millis() - g_refr_ms) > 0 && (float)a > trig) {
       uint32_t wend = g_cursor + WIN; if (wend > head) wend = head;
       int32_t peak = a;
       for (uint32_t i = g_cursor; i < wend; i++) {
@@ -185,8 +224,10 @@ static bool core_detect_onset(uint32_t* onset_sample, int32_t* out_peak) {
         on--;
       }
       *onset_sample = on; *out_peak = peak;
-      g_refr_ms = millis() + 700;                            // ignore echoes
-      g_cursor  = wend;
+      g_env       = (float)peak;      // release starts at the peak we just measured
+      g_armed     = false;            // re-arms when the envelope falls, not on a clock
+      g_disarm_ms = millis();
+      g_cursor    = wend;
       return true;
     }
     g_cursor++;
