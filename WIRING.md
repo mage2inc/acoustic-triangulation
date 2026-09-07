@@ -45,7 +45,7 @@ The CN3791 **BAT** terminals ARE the battery rail — cell + load both tap there
 Office node: no solar/charger/battery — powered from the Pi's USB-C (5 V → onboard
 LDO → 3V3). Everything else identical.
 
-## Signals — RYLR689 (LLCC68) node  [see also node_config.h]
+## Signals — RYLR689 (LLCC68) node
 
 Radio changed from Ra-01 / SX1278 → **RYLR689 / LLCC68**. It's a bare SPI module
 (not AT-command UART), so RadioLib drives it, but it needs 3 pins the SX1278
@@ -53,30 +53,39 @@ didn't: **BUSY** + the two antenna **RF-switch** lines (RFSW_V1/V2). It also run
 on a **32 MHz crystal, not a TCXO** → firmware passes `TCXO = 0.0` (a nonzero
 value makes `begin()` fail — this was the #1 first-try trap).
 
+**The GPIO numbers are deliberately not in this file.** They live in
+`firmware/src/node_config.h`, and every sketch prints the map it was *actually
+compiled with* in its first lines of serial output:
+
 ```
-INMP441 I²S:  BCLK=GP4   WS=GP5   SD=GP6                 (L/R -> GND, left ch)
-RYLR689 SPI:  SCK=GP12   MISO=GP13  MOSI=GP11  NSS=GP10
-              RST=GP7    DIO1=GP9   BUSY=GP3
-              RFSW_V1=GP2   RFSW_V2=GP8*             (*link test; see crunch)
-ATGM336H:     GPS_TX->GP1 (ESP RX)   PPS=GP8              (ESP->GPS TX unused)
+== pins compiled in ==  node=1  radio=LLCC68/RYLR689 (SX126x)  915.0 MHz
+   I2S_BCLK    GPIO..
+   ...                 (every signal, then a CONFLICT line if two share a pin)
 ```
 
-RYLR689 module pins → ESP: `1,13,18=GND  2=VDD(3V3)  3=NRESET→GP7  4=MISO→GP13
-5=MOSI→GP11  6=SCK→GP12  7=NSS→GP10  9=RFSW_V1→GP2  8=RFSW_V2  14=BUSY→GP3
-15=DIO1→GP9  10=ANT→coil`. Leave DIO2/DIO3 (16/17) unconnected.
+Flash, read that, wire to that. A pin number typed into a document is a claim
+about what the build looked like when somebody typed it. This file used to name a
+PPS pin that the firmware had since handed to RFSW_V2 — a pin RadioLib **drives**.
+Wired that way, the GPS PPS fights an ESP output: zero edges, `core_clock_ready()`
+never true, the node never transmits, and the console blames the sky. The build
+now refuses to compile a PPS/RF-switch collision, and the firmware now says
+`PPS pin GPIOn: 0 edges in 30 s` instead of "no PPS yet".
+
+RYLR689 module pin → signal: `1,13,18=GND  2=VDD(3V3)  3=NRESET  4=MISO  5=MOSI
+6=SCK  7=NSS  9=RFSW_V1  8=RFSW_V2  14=BUSY  15=DIO1  10=ANT→coil`. Leave
+DIO2/DIO3 (16/17) unconnected. Each signal's ESP pin comes from the boot print.
 
 ### Two-phase bring-up (breadboard)
 **Phase 1 — radio-only link test** (`lora_tx_llcc` / `lora_rx_llcc`): mic + GPS
-NOT connected, so the whole GP1–13 header is free. Wire the RYLR689 as above with
-**RFSW_V2 → GP8**. Both boards identical. Expect RX lines with RSSI ≈ −30…−60 dBm
-a few metres apart.
+NOT connected, so the whole header is free. Wire the radio per the boot print;
+both boards identical. Expect RX lines with RSSI ≈ −30…−60 dBm a few metres apart.
 
-**Phase 2 — full node / 2-node sync** (`twonode_llcc`): add mic + GPS. Now
-mic(3) + GPS(2) + RYLR689(9) = 14 signals vs 13 header pins. Reconcile:
-- **Move the INMP441 `L/R` wire from GP3 to the GND rail** (it just needs to be
-  low). That frees GP3 for **BUSY**.
-- **GP8 is now PPS**, so RFSW_V2 moves to **GP44 (the "RX" header pin)**. The
-  USB-CDC console frees UART0, so RX=GP44 / TX=GP43 are usable GPIO — 13 + 2 = 15
-  pins for 14 signals. Build with `-D PIN_LORA_RFSW2=44`; GP43 (TX) stays spare.
-  No solder pad, no extra part, real BUSY — the same two-GPIO RF-switch topology
-  the **PCB** uses, so the breadboard is electrically identical to the final board.
+**Phase 2 — full node / 2-node sync** (`twonode_llcc`): add mic + GPS. That is
+14 wired signals, and they all fit with no build-flag override — the USB-CDC
+console (`ARDUINO_USB_CDC_ON_BOOT=1`) frees UART0, so both of its pins are usable
+GPIO and one is left spare. Reconcile only one thing:
+- **INMP441 `L/R` goes to the GND rail**, not to a GPIO — it only needs to be low.
+
+If some signal looks like it needs a pin that is already taken, edit
+`node_config.h` and reflash. The boot print and the build's static asserts decide
+what is true; this paragraph does not.

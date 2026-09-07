@@ -76,15 +76,18 @@ rules at assembly:
 6. Flash `twonode_llcc` (node 1) / `twonode_b_llcc` (node 2), verify per FIELD_TEST.md.
 
 ## Net map (what connects to what)
-ESP32-S3-Zero →
-```
-GP1  ← GPS TX (NMEA)      GP7  → LoRa NRST        GP12 → LoRa SCK
-GP2  → LoRa RFSW_V1       GP8  ← GPS PPS          GP13 → LoRa MISO
-GP3  → LoRa BUSY          GP9  → LoRa DIO1        GP44 → LoRa RFSW_V2
-GP4  → Mic SCK(BCLK)      GP10 → LoRa NSS         3V3  → mic/gps/lora VDD
-GP5  → Mic WS            GP11 → LoRa MOSI         GND  → mic/gps/lora GND + mic L/R
-GP6  → Mic SD             GP43 = spare (TX)       GP48 = onboard RGB (no wire)
-```
+Page 1 of `out/node_report.pdf`. `gen_pdf.py` pulls its **geometry** from `gen_pcb.py`,
+but its net map is hand-typed too — so it *can* disagree with the board, and saying
+otherwise would just move the same trap one file over. What keeps it honest is
+`tests/test_pin_map.py`, which fails if that net map and `firmware/src/node_config.h`
+drift apart. Trust the test, not the provenance.
+
+The table that used to sit here disagreed with `node_config.h` on **eight** of
+fourteen nets — PPS, BUSY, DIO1, NRST, SCK, MOSI and both RF-switch pins. That is
+not a stale document, it is a wiring diagram that builds a board which cannot work,
+and it is the page someone solders from. Cross-check a finished board
+against the firmware's own boot print (`== pins compiled in ==`), not against prose.
+
 GPS RX pin = **no-connect** (we only read the GPS). LoRa module GND on 3 pads → tie all to GND.
 
 ## BOM (per node)

@@ -6,6 +6,7 @@
 
 void setup() {
   Serial.begin(115200); delay(1200);
+  node_pin_report();
   core_i2s_init();
   Serial.println("\n== acoustic_core I2S ring dump (make noise!) ==");
 }

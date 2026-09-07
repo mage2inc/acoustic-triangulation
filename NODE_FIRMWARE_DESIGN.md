@@ -23,21 +23,24 @@ for the source location (TDoA multilateration) on a Leaflet/OSM map.
 | Time/pos | ATGM336H (GPS+BDS timing) | UART (NMEA) + **PPS** | PPS is the whole ballgame |
 | Power | 5–6 W panel + 2× 18650 + CN3791/TP4056 | — | see power notes |
 
-### Pin map — Waveshare ESP32-S3-Zero (final)
-Board breaks out ~24 GPIO (GP1–18, 38–42, 45). Map avoids strapping pins
-(0/3/45/46), USB console (43/44 = UART0), USB D±(19/20), and GP21 (onboard WS2812).
-All signals are 3.3 V — no level shifting.
-```
-INMP441 (I²S):   BCLK=GP4    WS=GP5     SD=GP6         (L/R -> GND = left channel)
-SX1278 (SPI):    SCK=GP12    MISO=GP13  MOSI=GP11
-                 CS=GP10     RST=GP14   DIO0=GP9 (IRQ)
-ATGM336H:        GPS_TX->GP17 (ESP RX)  ESP_TX->GP18 (GPS RX, optional)
-                 PPS=GP8     (interrupt-capable, non-strapping — CRITICAL)
-Status LED:      GP21 (onboard WS2812, no header pin)
-Free for later:  GP1-3, 7, 15, 16, 38-42, 45  (SD logging, 2nd mic, PIR, ...)
-```
-Power: Ra-01 and ATGM336H on **3V3** (Ra-01 is NOT 5 V tolerant); board 5V pad
-feeds the regulator from the solar/battery supply.
+### Pin map — Waveshare ESP32-S3-Zero
+**The map is `firmware/src/node_config.h`, not this document.** It moved twice
+(SX1278 → RYLR689, then again for the carrier PCB), and the copy that used to sit
+here survived both — long enough to point PPS at a pin the radio driver had taken
+as an output. Every sketch prints the map it was compiled with at boot; wire from
+that. This section keeps only the *constraints* that choose the pins:
+
+- Avoid strapping pins, the USB D± pair, and the onboard WS2812.
+- USB-CDC console frees UART0, so both UART0 pins are usable GPIO.
+- **PPS must be interrupt-capable, non-strapping, and driven by nothing but the
+  GPS** — it is the whole timebase. A PPS sharing a GPIO with any output the
+  firmware drives is a build error (`static_assert` in node_config.h), because the
+  symptom — no edges, clock never ready, node silently never transmits — is
+  indistinguishable from a GPS that has no fix.
+- All signals are 3.3 V — no level shifting.
+
+Power: the radio and ATGM336H run on **3V3** (Ra-01 is NOT 5 V tolerant); the board
+5V pad feeds the regulator from the solar/battery supply.
 
 ---
 
@@ -322,12 +325,11 @@ re-syncs.
   config/ID/optional surveyed position.
 - **High-side P-MOSFET** (or the GPS module's standby pin) to gate GPS power.
 
-### Extra pins (from the free set)
-```
-DS3231 I²C:   SDA=GP1   SCL=GP2
-DS3231 32kHz: 32K -> GP7   (optional: TCXO reference into a counter)
-GPS enable:   GP15 -> MOSFET gate (cut GPS VCC when sleeping)
-```
+### Extra pins
+Needs 3–4 more GPIO (I²C SDA/SCL, optional 32 kHz reference in, GPS-enable MOSFET
+gate). **Not allocated here** — the full node already uses nearly the whole header,
+so anyone building this variant assigns them in `node_config.h`, where the collision
+checks live, and reads the boot pin map back.
 
 ### How it works
 1. **Sync phase (GPS on):** get position fix (average once, store in EEPROM) +

@@ -39,7 +39,7 @@ static bool     tx_pending = false;
 static uint32_t tx_at = 0;
 static Report   tx_rpt;
 
-// ---- onboard WS2812 status LED (GP21, no header pin) ----------------------
+// ---- onboard WS2812 status LED (PIN_RGB in node_config.h, no header pin) ---
 //  solid RED     radio init failed (dead — check wiring)
 //  blink RED     no GPS fix yet (sats = 0)
 //  blink YELLOW  acquiring GPS / averaging position (has sats, not locked)
@@ -47,9 +47,6 @@ static Report   tx_rpt;
 //  BLUE flash    local clap/onset detected
 //  CYAN flash    received the other node's report over LoRa
 //  MAGENTA flash PAIR — Δt computed between the two nodes
-#ifndef PIN_RGB
-#define PIN_RGB 48                  // onboard RGB confirmed on GPIO48 (this board)
-#endif
 static bool     g_radio_ok = false;
 static uint32_t led_flash_until = 0;
 static uint8_t  fr, fg, fb;
@@ -90,7 +87,7 @@ static void try_pair() {
 
 #ifdef BENCH_SHARED
 #include "esp_timer.h"
-#define BENCH_PPS_OUT 43                        // node1 drives 1Hz here -> wire to BOTH nodes' GP8
+#define BENCH_PPS_OUT 43                        // node1 drives 1Hz here -> wire to BOTH nodes' PPS pin
 static void bench_pps_cb(void*) { static bool s = false; s = !s; digitalWrite(BENCH_PPS_OUT, s ? HIGH : LOW); }
 static void bench_shared_clock() {              // discipline to the shared PPS wire; utc fixed=0
   static uint32_t last = 0; uint32_t c1, c2; uint64_t pus;
@@ -128,7 +125,8 @@ void setup() {
     const esp_timer_create_args_t a = { .callback = bench_pps_cb, .arg = NULL,
       .dispatch_method = ESP_TIMER_TASK, .name = "bpps", .skip_unhandled_events = false };
     esp_timer_handle_t h; esp_timer_create(&a, &h); esp_timer_start_periodic(h, 500000);
-    Serial.println("BENCH_SHARED: node1 driving 1Hz on GP43 -> wire GP43 to BOTH nodes' GP8.");
+    Serial.printf("BENCH_SHARED: node1 driving 1Hz on GPIO%d -> wire it to BOTH nodes' "
+                  "PPS pin (GPIO%d).\n", (int)BENCH_PPS_OUT, (int)PIN_PPS);
   }
   Serial.println("BENCH_SHARED: shared-PPS common timebase -> dt should TRACK clap position.");
 #endif

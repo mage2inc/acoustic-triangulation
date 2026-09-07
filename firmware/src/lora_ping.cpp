@@ -8,9 +8,9 @@
 // attaches after boot still sees whether the radio came up — the ESP32-S3 native
 // USB port re-enumerates on reset and eats one-shot boot prints.
 //
-// Wiring (RYLR689): NSS->GP10 SCK->GP12 MISO->GP13 MOSI->GP11 RST->GP7
-//                   DIO1->GP9 BUSY->GP3 RFSW_V1->GP2 RFSW_V2->GP44(RX)
-//                   3.3V/GND  ANT coil (never TX bare!)
+// Wiring (RYLR689): NSS/SCK/MISO/MOSI/RST/DIO1/BUSY/RFSW_V1/RFSW_V2 per the pin
+// map this sketch prints at boot (node_config.h is the only pin map). Plus
+// 3.3V/GND and the ANT coil — never TX bare!
 
 #include <Arduino.h>
 #include <RadioLib.h>
@@ -25,6 +25,7 @@ void setup() {
   Serial.begin(115200);
   delay(1800);                                 // let HWCDC enumerate + host attach
   for (int i = 0; i < 3; i++) { Serial.printf("BOOT %d (pre-radio)\n", i); delay(150); }
+  node_pin_report();
   Serial.println("SPI.begin ...");
   SPI.begin(PIN_LORA_SCK, PIN_LORA_MISO, PIN_LORA_MOSI, PIN_LORA_NSS);
   Serial.println("lora_begin() ... (if this is the last line, radio.begin hung -> BUSY/SPI wiring)");
@@ -35,7 +36,7 @@ void setup() {
   Serial.printf("\n== LoRa PING RX ==  freq=%.1f init=%d\n", LORA_FREQ, g_init);
 #endif
   if (g_init != RADIOLIB_ERR_NONE)
-    Serial.println("LoRa init FAILED — check SPI wiring / BUSY(GP3) / RFSW / 3.3V");
+    Serial.println("LoRa init FAILED — check SPI wiring / BUSY / RFSW / 3.3V against the pin map above");
   else
     Serial.println("LoRa ready.");
 }

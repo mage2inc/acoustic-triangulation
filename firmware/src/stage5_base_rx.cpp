@@ -56,6 +56,7 @@ void setup() {
   Serial.begin(115200);
   delay(400);
   Serial.println("\n== Stage 5: base receiver + sync check ==");
+  node_pin_report();
   SPI.begin(PIN_LORA_SCK, PIN_LORA_MISO, PIN_LORA_MOSI, PIN_LORA_NSS);
   int st = lora_begin();
   if (st != RADIOLIB_ERR_NONE) { Serial.printf("LoRa init FAILED %d\n", st); while (1) delay(1000); }

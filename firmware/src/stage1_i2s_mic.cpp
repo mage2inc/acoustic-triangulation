@@ -5,7 +5,8 @@
 //
 //   pio run -e stage1 -t upload -t monitor
 //
-// Wiring: INMP441 VDD->3V3, GND->GND, L/R->GND, SCK->GP4, WS->GP5, SD->GP6
+// Wiring: INMP441 VDD->3V3, GND->GND, L/R->GND, then SCK/WS/SD to the I2S pins
+// this sketch prints at boot (defined in node_config.h).
 
 #include <Arduino.h>
 #include <driver/i2s_std.h>
@@ -42,6 +43,7 @@ static void mic_init() {
 void setup() {
   Serial.begin(115200);
   delay(400);
+  node_pin_report();
   Serial.println("\n== Stage 1: INMP441 I2S mic level meter ==");
   mic_init();
   Serial.println("Tap/clap the mic — bar should move.");

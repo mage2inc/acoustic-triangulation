@@ -111,6 +111,8 @@ static inline bool core_clock_ready() { return g_clk_valid; }
 // parse of it (off-by-one). Guard: if we detect we were stalled, still consume
 // the sentence (clear the flag) but SKIP pairing until the next clean cycle —
 // so a bad anchor is never latched (worst case: clock briefly goes stale).
+static void core_pps_watchdog();          // defined below, needs core_sats()
+
 static void core_gps_service() {
   uint32_t nowms  = millis();
   bool stalled    = (g_last_svc_ms != 0) && (nowms - g_last_svc_ms > 400);
@@ -133,10 +135,66 @@ static void core_gps_service() {
     }
   }
   if (g_clk_valid && (nowms - g_clk_stamp_ms) > 2500) g_clk_valid = false; // stale
+  core_pps_watchdog();
 }
 
 static uint32_t core_pps_interval() { return g_pps_interval; }
 static uint32_t core_sats()         { return g_gps.satellites.value(); }
+
+// ---- PPS liveness watchdog -------------------------------------------------
+// A dead PPS pin and a GPS with no sky view print the same thing: nothing. They
+// are not the same fault and they do not have the same fix, so say which one it
+// is, and name the GPIO. Two ways this has masqueraded as healthy on sibling
+// hardware: an "input" another peripheral was actually driving, and a counter
+// that incremented on noise from a floating pin. Both are caught here -- zero
+// edges is one report, wrong-rate edges is a different one.
+#define PPS_WATCH_MS 30000u
+static uint32_t g_pps_watch_ms  = 0;
+static uint32_t g_pps_watch_cnt = 0;
+static bool     g_pps_announced = false;
+
+static void core_pps_watchdog() {
+  uint32_t nowms = millis();
+  if (nowms - g_pps_watch_ms < PPS_WATCH_MS) return;
+  uint32_t win_s = (nowms - g_pps_watch_ms) / 1000u;
+  g_pps_watch_ms = nowms;
+
+  uint32_t c1, c2, iv;
+  do { c1 = g_pps_cnt; iv = g_pps_interval; c2 = g_pps_cnt; } while (c1 != c2);
+  uint32_t edges = c1 - g_pps_watch_cnt;
+  g_pps_watch_cnt = c1;
+
+  if (edges == 0) {
+    g_pps_announced = false;
+    // Name the pin and hand over the two facts that separate the two faults --
+    // don't rule either out for the operator. A module that holds PPS until it
+    // locks and a pin that is simply not connected both print zero here; a VALID
+    // FIX with zero edges does not, and that one is wiring.
+    Serial.printf("PPS pin GPIO%d: 0 edges in %u s | NMEA chars=%lu sats=%u fix=%d. "
+                  "Fix valid and still 0 = the pin, not the sky: check GPIO%d against "
+                  "the boot pin map (unwired, wrong GPIO, or held by another driver).\n",
+                  (int)PIN_PPS, win_s,
+                  (unsigned long)g_gps.charsProcessed(), (unsigned)core_sats(),
+                  (int)g_gps.location.isValid(), (int)PIN_PPS);
+    return;
+  }
+  // Real 1PPS is 1 Hz with a ~1000000 us interval. Anything else is noise on a
+  // floating input or a pin something else is toggling -- edges are NOT health.
+  if (edges + edges / 10u < win_s || edges > win_s + win_s / 10u ||
+      iv < 999000u || iv > 1001000u) {
+    g_pps_announced = false;
+    Serial.printf("PPS pin GPIO%d: %u edges in %u s (want ~%u) interval=%u us "
+                  "(want ~1000000) -- that is not a GPS 1PPS. Floating-input noise "
+                  "or another driver on the pin; the clock stays invalid.\n",
+                  (int)PIN_PPS, edges, win_s, win_s, iv);
+    return;
+  }
+  if (!g_pps_announced) {
+    g_pps_announced = true;
+    Serial.printf("PPS pin GPIO%d: %u edges in %u s, interval=%u us -- locked.\n",
+                  (int)PIN_PPS, edges, win_s, iv);
+  }
+}
 
 // local esp_timer µs -> GPS µs-of-day (both nodes use the same anchor scheme)
 static uint64_t core_local_to_gps_us(uint64_t local_us) {
@@ -196,8 +254,15 @@ static bool core_detect_onset(uint32_t* onset_sample, int32_t* out_peak) {
 
 // ============================ bring-up ======================================
 static void core_begin() {
+  node_pin_report();                  // check the board against the BUILD, not a doc
   core_i2s_init();
   g_gpsser.begin(9600, SERIAL_8N1, PIN_GPS_RX, PIN_GPS_TX);
-  pinMode(PIN_PPS, INPUT);
+  // PULLDOWN, not bare INPUT: an unwired RISING-edge pin floats and counts noise,
+  // which reads as a live PPS at a junk rate. Pulled down, "not wired" is 0 edges
+  // and the watchdog can name it. ASSUMES the module drives PPS push-pull (usual
+  // for a GNSS timepulse, not measured here) -- if one ever drives it open-drain
+  // this pin reads dead, so go back to INPUT and the noise story comes back.
+  pinMode(PIN_PPS, INPUT_PULLDOWN);
   attachInterrupt(digitalPinToInterrupt(PIN_PPS), core_pps_isr, RISING);
+  g_pps_watch_ms = millis();
 }
