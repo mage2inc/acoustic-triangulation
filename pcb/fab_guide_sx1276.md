@@ -1,5 +1,9 @@
 # JLCPCB Fabrication Guide — Acoustic Node Carrier v3.0-sx1276
 
+> ⚠️ **UNTESTED** — Gerbers are ready and pinout-verified, but no boards have been
+> manufactured or assembled yet. Review all pads against your physical XL1276-P01
+> module with calipers and a multimeter before submitting to fab.
+
 Board: **56 × 53 mm**, 2-layer FR4, XL1276-P01 / SX1276 variant.
 
 ---

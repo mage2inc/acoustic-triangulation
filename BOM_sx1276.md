@@ -1,5 +1,9 @@
 # Acoustic Triangulation — BOM (SX1276 / XL1276-P01 variant, v3 manufactured PCB)
 
+> ⚠️ **UNTESTED VARIANT** — PCB gerbers are generated and verified for correctness,
+> but no boards have been ordered or soldered yet. Use [BOM.md](../BOM.md) (RYLR689 v2)
+> if you need a working node today. This file tracks the v3 SX1276 variant for future production.
+
 > **Radio: XL1276-P01 (Semtech SX1276, 915 MHz, SPI).** Simpler wiring than RYLR689:
 > only NSS/SCK/MOSI/MISO/RST/DIO0 — no RF-switch lines, no BUSY pin. GP7 + GP8 freed.
 > Firmware default in `node_config.h` — **no build flags needed**.

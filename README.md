@@ -30,9 +30,23 @@ LoRa is used **only** to ship the tiny detection report after the fact. It has n
 
 ---
 
-## Hardware
+## Hardware variants
 
-### Field node ×4 (solar, weatherproof, one per corner)
+Two board variants exist. **Only v2 has been built and tested on the bench.**
+
+| Variant | Radio | PCB | Status |
+|---|---|---|---|
+| **v2 — RYLR689** | LLCC68 (SPI bare module) | Hand-wired breadboard / CNC milled | ✅ Tested — bench sync confirmed |
+| **v3 — XL1276-P01** | SX1276 (SPI castellation) | JLCPCB 2-layer FR4, 56×53 mm | ⚠️ **UNTESTED** — gerbers ready, not yet ordered |
+
+v3 uses the same ESP32-S3-Zero and GPS/mic modules as v2. The SX1276 needs 3 fewer GPIO pins (no BUSY, no RF-switch lines) and is meant to be manufactured, not hand-wired.
+
+> **If you're building now, use v2 (RYLR689).** See [BOM.md](BOM.md) and [WIRING.md](WIRING.md).
+> v3 PCB files and BOM are in this repo but have not been ordered or soldered yet.
+
+---
+
+### v2 field node ×4 (RYLR689 — active variant)
 
 | Part | ~$ |
 |---|---|
@@ -58,6 +72,8 @@ Raspberry Pi (any model with USB) + the office node + a browser. No cloud. No AP
 
 **Full BOM with sourcing notes and buy links → [BOM.md](BOM.md)**
 
+**v3 (SX1276 / manufactured PCB) BOM and fab guide → [BOM_sx1276.md](BOM_sx1276.md) · [pcb/fab_guide_sx1276.md](pcb/fab_guide_sx1276.md)**
+
 **Detailed power budget, solar sizing, and low-power DS3231 holdover variant → [POWER.md](POWER.md)**
 
 ---
@@ -70,16 +86,23 @@ firmware/          PlatformIO project — ESP32-S3 node firmware
     acoustic_core.h   timing engine (GPS-PPS + I²S DMA ring + onset detector)
     node_config.h     pin map + node ID (edit per node)
     main_stageN.cpp   staged build environments (mic → GPS → onset → full node)
-  platformio.ini
+  platformio.ini      default env = SX1276; add -D LORA_MOD_LLCC68 for RYLR689
 
 base/
   base_station.py   LoRa RX → TDoA solver → Leaflet map (Flask)
   test_solver.py    unit tests for the multilateration math
   requirements.txt
 
-BOM.md             Full bill of materials with sourcing
+pcb/                       ⚠️ v3 SX1276 PCB — UNTESTED, not yet ordered
+  gen_pcb_sx1276.py        Gerber generator (Python, no KiCad needed)
+  gen_pcb.py               v2.2 RYLR689 CNC preview (reference only)
+  out_sx1276/              Ready-to-upload gerbers for JLCPCB
+  fab_guide_sx1276.md      JLCPCB ordering steps + pricing
+
+BOM.md             v2 RYLR689 bill of materials (tested)
+BOM_sx1276.md      v3 SX1276 bill of materials ⚠️ untested
 POWER.md           Power budget, solar sizing, battery autonomy, DS3231 holdover
-WIRING.md          Pin-by-pin wiring for S3-Zero + all modules
+WIRING.md          Pin-by-pin wiring for both variants
 POC.md             Proof-of-concept plan (USB-powered bench test first)
 NODE_FIRMWARE_DESIGN.md  Detailed firmware architecture
 FIELD_TEST.md      Field deployment checklist
